@@ -105,8 +105,10 @@ def get_medicine_pose(hand_landmarks):
     pinky_angle0 = (pinky_mp_dist ** 2 + pinky_pd_dist ** 2 - pinky_md_dist ** 2) / (2 * pinky_mp_dist * pinky_pd_dist) #angle 18
     pinky_angle1 = (pinky_pd_dist ** 2 + pinky_dt_dist ** 2 - pinky_pt_dist ** 2) / (2 * pinky_pd_dist * pinky_dt_dist) #angle 19
 
+    direction = index_tip.y > index_mcp.y
+    
     get_medicine = thumb_index_dist < 0.1 and index_angle0 < 0 and index_angle1 < 0 and middle_pd_dist < 0.1 and ring_pd_dist < 0.1 and \
-                    pinky_pd_dist < 0.1 and ring_angle0 > 0 and ring_angle1 < 0 and pinky_angle0 > 0 and pinky_angle1 < 0
+                    pinky_pd_dist < 0.1 and ring_angle0 > 0 and ring_angle1 < 0 and pinky_angle0 > 0 and pinky_angle1 < 0 and direction
 
     return get_medicine
 
