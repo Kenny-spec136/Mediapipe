@@ -4,9 +4,9 @@ import numpy as np
 import sys
 import datetime
 import json
+import os
 
 #json檔
-#path = 'output.txt'
 path = 'output.json'
 f = open(path, 'w')
 data = {
@@ -106,7 +106,7 @@ def get_medicine_pose(hand_landmarks):
     pinky_angle1 = (pinky_pd_dist ** 2 + pinky_dt_dist ** 2 - pinky_pt_dist ** 2) / (2 * pinky_pd_dist * pinky_dt_dist) #angle 19
 
     direction = index_tip.y > index_mcp.y
-    
+
     get_medicine = thumb_index_dist < 0.1 and index_angle0 < 0 and index_angle1 < 0 and middle_pd_dist < 0.1 and ring_pd_dist < 0.1 and \
                     pinky_pd_dist < 0.1 and ring_angle0 > 0 and ring_angle1 < 0 and pinky_angle0 > 0 and pinky_angle1 < 0 and direction
 
@@ -115,129 +115,117 @@ def get_medicine_pose(hand_landmarks):
 set_time_med(path_r)
 
 # 開啟攝影機
-cap = cv2.VideoCapture(0)
-#cv2.namedWindow('Hidden Window', cv2.WINDOW_NORMAL)
-#cv2.setWindowProperty('Hidden Window', cv2.WND_PROP_VISIBLE, 0)
+cap = cv2.VideoCapture('rtmp://192.168.127.199/live/stream')
 with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5) as hands:
     while cap.isOpened():
-        # 更新時間
-        now = datetime.datetime.now(tz=datetime.timezone(datetime.timedelta(hours=8)))
-        sec = now.second
-        #print("now = " + str(now))
+        try:
+            # 更新時間
+            now = datetime.datetime.now(tz=datetime.timezone(datetime.timedelta(hours=8)))
+            sec = now.second
+            #print("now = " + str(now))
 
-        if sec == 0:
-            counter = 0
-            med_counter = 0
-            Op_w = False
+            if sec == 0:
+                counter = 0
+                med_counter = 0
+                Op_w = False
 
-        if counter == -1:
-            counter = 0
-            Op_w = False
-            try:
-                for i in range(len(time[0])):
-                    if  sec > time[1][i]:
-                        counter += 1
-            except Exception as e:
-                print(f"Error1: {e}")
+            if counter == -1:
+                counter = 0
+                Op_w = False
+                try:
+                    for i in range(len(time[0])):
+                        if  sec > time[1][i]:
+                            counter += 1
+                except Exception as e:
+                    print(f"Error1: {e}")
 
-        # 記錄(未)服藥時間
-        '''
-        if sec > time[1][counter] and counter + 1 < len(time[0]):
-            if Op and med_counter >= 5:
-                lines = 'Get Medicine ' + str(now) + '\n'
-                f.writelines(lines)
-                Op = False
-            elif ~Op:
-                lines = 'Did Not Get Medicine ' + str(now) + '\n'
-                f.writelines(lines)
-            counter += 1
-            med_counter = 0
-        '''
-        # 記錄未服藥時間
-        if sec > time[1][counter]:
-            if med_counter < 5:
+            # 記錄未服藥時間
+            if sec > time[1][counter]:
+                if med_counter < 5:
+                    try:
+                        f = open(path, 'r')
+                        data = json.load(f)
+                        f = open(path, 'w')
+                    except Exception as e:
+                        print(f"Error2: {e}")
+                    data["take"] = False
+                    data["time"] = str(now)
+                    json.dump(data, f, indent = 2)
+                    f.flush()
+                counter += 1
+                med_counter = 0
+                Op_w = False
+
+            # 記錄服藥時間
+            if med_counter >= 5 and not Op_w:
                 try:
                     f = open(path, 'r')
                     data = json.load(f)
                     f = open(path, 'w')
                 except Exception as e:
                     print(f"Error2: {e}")
-                data["take"] = False
+                data["take"] = True
                 data["time"] = str(now)
                 json.dump(data, f, indent = 2)
                 f.flush()
-            counter += 1
-            med_counter = 0
-            Op_w = False
+                Op = False
+                Op_w = True
 
-        # 記錄服藥時間
-        if med_counter >= 5 and not Op_w:
-            try:
-                f = open(path, 'r')
-                data = json.load(f)
-                f = open(path, 'w')
-            except Exception as e:
-                print(f"Error2: {e}")
-            data["take"] = True
-            data["time"] = str(now)
-            json.dump(data, f, indent = 2)
-            f.flush()
-            Op = False
-            Op_w = True
+            ret, frame = cap.read()
+            if not ret:
+                sys.exit('ERROR: Unable to read from webcam. Please verify your webcam settings.')
 
-        ret, frame = cap.read()
-        if not ret:
-            sys.exit('ERROR: Unable to read from webcam. Please verify your webcam settings.')
+            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image.flags.writeable = False
+            results = hands.process(image)
 
-        # 轉換影像到 RGB
-        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        image.flags.writeable = False
-        results = hands.process(image)
+            # 轉換回 BGR 顯示
+            image.flags.writeable = True
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-        # 轉換回 BGR 顯示
-        image.flags.writeable = True
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            # 偵測手部位置
+            if results.multi_hand_landmarks:
+                for hand_landmarks in results.multi_hand_landmarks:
+                    # 繪製手部結構
+                    mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-        # 偵測手部位置
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                # 繪製手部結構
-                mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                    # 檢查是否符合條件
+                    if get_medicine_pose(hand_landmarks):
+                        cv2.putText(image, "Get Medicine!", (10, 50),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                        if Op:
+                            med_counter += 1
+                            Op = True
+                    else:
+                        cv2.putText(image, "Not Get Medicine", (10, 50),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                        if med_counter <= 4:
+                            med_counter = 0
+            else:
+                cv2.putText(image, "Hands Not Detected!", (10, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                if med_counter <= 4:
+                    med_counter = 0
+                            
+            cv2.putText(image, "Time:" + str(sec), (850, 750),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2, cv2.LINE_AA)
+                
+            if sec < time[0][counter] and counter + 1 < len(time[0]):
+                Op = False
 
-                # 檢查是否符合條件
-                if get_medicine_pose(hand_landmarks):
-                    cv2.putText(image, "Get Medicine!", (10, 50),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-                    if Op:
-                        med_counter += 1
-                    Op = True
-                else:
-                    cv2.putText(image, "Not Get Medicine", (10, 50),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-                    if med_counter <= 4:
-                        med_counter = 0
-        else:
-            cv2.putText(image, "Hands Not Detected!", (10, 50),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-            if med_counter <= 4:
-                med_counter = 0
-                    
-        cv2.putText(image, "Time:" + str(sec), (470, 470),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2, cv2.LINE_AA)
-        
-        if sec < time[0][counter] and counter + 1 < len(time[0]):
-            Op = False
+            # 顯示影像
+            cv2.imshow('MediaPipe Hand Detection', image)
 
-        # 顯示影像
-        cv2.imshow('MediaPipe Hand Detection', image)
+            if cv2.waitKey(5) & 0xFF == 114:  # 按下r鍵(小寫)修改時間 #這個先不要理他
+                set_time_med(path_r)
+                lines = 'Time Modified ' + str(now) + '\n'
+                f.writelines(lines)
+                Op = False
+            elif cv2.waitKey(5) & 0xFF == 27:  # 按下 ESC 鍵退出
+                break
 
-        if cv2.waitKey(5) & 0xFF == 114:  # 按下r鍵(小寫)修改時間 #這個先不要理他
-            set_time_med(path_r)
-            lines = 'Time Modified ' + str(now) + '\n'
-            f.writelines(lines)
-            Op = False
-        elif cv2.waitKey(5) & 0xFF == 27:  # 按下 ESC 鍵退出
-            break
+        except Exception as e:
+            print(f"Error3: {e}")
 
 f.close()
 cap.release()
