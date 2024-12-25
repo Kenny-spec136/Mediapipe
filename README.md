@@ -17,3 +17,7 @@ On computer:
 Modify project.py line 117 Rpi's IP address
 
 py .\project.py
+
+How to get Rpi's IP address:
+
+hostname -I
