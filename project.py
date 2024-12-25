@@ -114,7 +114,7 @@ def get_medicine_pose(hand_landmarks):
 set_time_med(path_r)
 
 # 開啟攝影機
-cap = cv2.VideoCapture('rtmp://192.168.127.199/live/stream')
+cap = cv2.VideoCapture('rtmp://(rpi's IP address)/live/stream')
 with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5) as hands:
     while cap.isOpened():
         try:
