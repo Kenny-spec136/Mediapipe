@@ -17,6 +17,7 @@ f.flush()
 path_r = 'input.json'
 counter = -1 #紀錄比對到第幾個element
 med_counter = 0 #防止跳動造成誤判
+med_counter_threshold = 3 #調整判斷的門檻
 Op = False
 Op_w = False
 time = []
@@ -114,7 +115,7 @@ def get_medicine_pose(hand_landmarks):
 set_time_med(path_r)
 
 # 開啟攝影機
-cap = cv2.VideoCapture('rtmp://(rpi's IP address)/live/stream')
+cap = cv2.VideoCapture('rtmp://192.168.127.199/live/stream')
 with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5) as hands:
     while cap.isOpened():
         try:
@@ -140,7 +141,7 @@ with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5) a
 
             # 記錄未服藥時間
             if sec > time[1][counter]:
-                if med_counter < 5:
+                if med_counter < med_counter_threshold:
                     try:
                         f = open(path, 'r')
                         data = json.load(f)
@@ -156,7 +157,7 @@ with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5) a
                 Op_w = False
 
             # 記錄服藥時間
-            if med_counter >= 5 and not Op_w:
+            if med_counter >= med_counter_threshold and not Op_w:
                 try:
                     f = open(path, 'r')
                     data = json.load(f)
@@ -194,16 +195,16 @@ with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5) a
                                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
                         if Op:
                             med_counter += 1
-                            Op = True
+                        Op = True
                     else:
                         cv2.putText(image, "Not Get Medicine", (10, 50),
                                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-                        if med_counter <= 4:
+                        if med_counter < med_counter_threshold:
                             med_counter = 0
             else:
                 cv2.putText(image, "Hands Not Detected!", (10, 50),
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-                if med_counter <= 4:
+                if med_counter < med_counter_threshold:
                     med_counter = 0
                             
             cv2.putText(image, "Time:" + str(sec), (850, 750),
