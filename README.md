@@ -21,3 +21,7 @@ py .\project.py
 How to get Rpi's IP address:
 
 hostname -I
+
+Input Example: (input.json)
+
+Set take medicine time to (10,20), (30,40) and (47,55)
