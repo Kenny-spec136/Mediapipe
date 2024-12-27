@@ -2,7 +2,7 @@ Requirements:
 
 On Rpi : Python, OpenCV, RTMP, FFmpeg
 
-On computer : Python, MediaPipe, OpenCV, TensorFlow, RTMP, FFmpeg
+On computer : Python, MediaPipe, OpenCV, TensorFlow, FFmpeg
 
 How to use:
 
