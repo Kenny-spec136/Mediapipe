@@ -1,7 +1,0 @@
-1.在電腦上安裝Python, OpenCV, MediaPipe, Tensorflow, FFmpeg, RTMP(Nginx)
-2.在Rpi上安裝Python, OpenCV, FFmpeg, RTMP
-3.確保電腦與Rpi在同一個區域網路下
-4.在Rpi上輸入 hostname -I 以取得其IP位址
-5.在Rpi上輸入 ffmpeg -f v4l2 -i /dev/video0 -vcodec libx264 -preset ultrafast -tune zerolatency -maxrate 3000k -bufsize 6000k -f flv rtmp://(Rpi's IP address)/live/stream -rtmp_buffer 100000 -rtmp_live live ，記得填入Rpi的IP位址
-6.修改project.py第118行，將其改成 cap = cv2.VideoCapture('rtmp://(Rpi's IP address)/live/stream')
-7.在電腦上開啟project.py
